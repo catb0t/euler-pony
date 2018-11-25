@@ -1,0 +1,161 @@
+use "collections"
+use "itertools"
+use "debug"
+use "random"
+use "time"
+
+/*class iso E3 is MicroBenchmark
+  let v: U64
+  new iso create(v': U64) => this.v = v'
+  fun name(): String => "e3(" + this.v.string() + ")"
+  fun apply() => DoNotOptimise[U64](this.e3(this.v)); DoNotOptimise.observe()
+
+  fun e3 (n: U64): U64 =>
+    n
+*/
+actor E3Main // is BenchmarkList
+  let e3_i: U64 = 600851475143
+
+  new create (env: Env) =>
+/*    env.out.print(
+      "#3: largest factor of 600851475143" +
+      "\t" + this.e3(this.e3_i).string()
+      // "\t" + this.e1_rec(this.e1_i).string() +
+      // "\t" + this.e1_fun(this.e1_i).string() +
+      // "\t" + this.e1_fun2(this.e1_i).string()
+    )
+*/
+    assert[F64](env, "exp_mod in\t4, 13, 491", exp_mod[U64](4, 13, 497), 445.0)
+    assert[F64](env, "exp_mod in\t31, 9, 37", exp_mod[U64](31, 9, 37), 31.0)
+    assert[F64](env, "exp_mod in\t1861, 1001, 2003", exp_mod[U64](1861, 1001, 2003), 2002)
+
+    assert[Bool](env, "prime? 2", is_prime(2), true)
+    assert[Bool](env, "prime? 3", is_prime(3), true)
+    assert[Bool](env, "prime? 5", is_prime(5), true)
+    assert[Bool](env, "prime? 37", is_prime(37), true)
+    assert[Bool](env, "prime? 47", is_prime(47), true)
+    assert[Bool](env, "prime? 101", is_prime(101), true)
+    assert[Bool](env, "prime? 1009", is_prime(1009), true)
+    assert[Bool](env, "prime? 2003", is_prime(2003), true)
+    assert[Bool](env, "prime? 4001", is_prime(4001), true)
+    assert[Bool](env, "prime? 6007", is_prime(6007), true)
+    assert[Bool](env, "prime? 6857", is_prime(6857), true)
+    assert[Bool](env, "prime? 6863", is_prime(6863), true)
+    assert[Bool](env, "prime? 222222", is_prime(222222), false)
+    assert[Bool](env, "prime? 600851475143", is_prime(600851475143), false)
+    assert[Bool](env, "prime? 11111111111411", is_prime(11111111111411), true)
+/*
+    assert[U64](env, "valuation 22\tby 2", valuation(22, 2), 1)
+    assert[U64](env, "valuation 220\tby 2", valuation(220, 2), 2) // 2^3 doesn't divide 220
+    assert[U64](env, "valuation 1024\tby 2", valuation(1024, 2), 10) // 2^11
+    assert[U64](env, "valuation 470910952 by 778", valuation(470910952, 778), 3) // 778^3
+
+*/
+    //PonyBench(env, this)
+/*
+  fun tag benchmarks(bench: PonyBench) =>
+    let e3': U64 = 1000
+
+    bench(E3(e3'))
+*/
+  fun assert[T: (Equatable[T] val & Stringable val)](env: Env, name: String, a: T, b: T): Bool =>
+    if a == b then
+      Debug("PASS: " + name + ":\t(" + a.string() + " == " + b.string() + ")")
+      true
+    else
+      Debug("FAIL: " + name + ":\t(" + a.string() + " == " + b.string() + ") failed!")
+      false
+    end
+
+  // highest n in (x mod p^n) == 0
+  // highest power of p to evenly divide x
+  fun valuation(x: U64, p: U64): U64 =>
+    (let x', let p') = (x.f64(), p.f64())
+    var n: F64 = 1
+    //repeat
+    while true do
+      if (x' % (p'.pow(n))) != 0 then break end
+      n = n + 1
+    //until (x' % (p'.pow(n))) != 0 end
+    end
+    (n - 1).u64()
+
+  fun exp_mod [T: (F64 val | U64 val)] (b: T, e: T, m: T): F64 =>
+    b.f64().pow(e.f64()) % m.f64()
+
+  fun is_prime (n: U64, trials: U8 = 10): Bool =>
+    if n == 2 then true
+    elseif n < 18 then let f = [as U64: 3; 5; 7; 11; 17]; f.contains(n)
+    elseif
+      Iter[U64](
+        [ (n and 1); n % 3; n % 5; n % 7; n % 11; n % 17 ].values()
+      ).any({ (x) => x == 0 } )
+      then false
+    else
+      // n is ODD and GREATER THAN 7
+      // https://rosettacode.org/wiki/Miller%E2%80%93Rabin_primality_test#Sidef
+      let d = n - 1
+      let s = valuation(d, 2)
+      let d' = d >> s
+      // Debug("d:" + d.string() + " s:" + s.string() + " d':" + d'.string())
+
+      let pick_high = n - 1
+      let rand = MT(Time.now()._1.u64())
+      Debug("s:" + s.string())
+      for _ in Range[U8](0, trials) do
+        let pick = rand.next() % pick_high
+        Debug("(1) pick:" + pick.string() + " d':" + d'.string() + " n:" + n.string())
+        var x: F64 = exp_mod[U64](pick, d', n) // pick.f64().pow(d'.f64()).u64() % n
+        Debug("(1) \tx:" + x.string() + " " + "\n")
+        if (x == 1) or (x == (n - 1).f64()) then continue end
+
+        for _ in Range[U64](0, s - 1) do
+          Debug("(2) x:" + x.string() + " n:" + n.string())
+          x = exp_mod[F64](x, 2, n.f64()) // x.f64().pow(2).u64() % n
+          Debug("(2) \tx:" + x.string() + " " + "\n")
+          if x == 1 then return false end
+          if x == (n - 1).f64() then break end
+        end
+
+        if x != (n - 1).f64() then return false end
+
+      end
+
+      return true
+    end
+
+  // : next-odd' ( m -- n ) [ even? 1 2 ? ] keep + ;
+  fun next_odd (n: U64): U64 =>
+    n + if (n % 2) == 0 then 1 else 2 end
+
+  // : next-prime ( n -- p ) dup 2 < [ drop 2 ] [ next-odd [ dup prime? ] [ 2 + ] until ] if ;
+  fun next_prime_rec (n: U64): U64 =>
+    let n' = next_odd(n)
+    if is_prime(n') then n'
+    else next_prime_rec(n') end
+
+  fun next_prime (n: U64): U64 =>
+    match n
+    | 0 => 2
+    | 1 => 2
+    | 2 => 3
+    | 3 => 5
+    | 7 => 11
+    else
+      next_prime_rec(n)
+    end
+
+  fun factors (n: U64): Array[U64] =>
+    if is_prime(n) then [1; n]
+    else
+      let fs: Array[U64] = Array[U64]
+      var fac_cd = next_prime(0) // first prime: 2
+      repeat
+        if (n % fac_cd) == 0 then fs.push(fac_cd) end
+        fac_cd = next_prime(fac_cd)
+      until n < (fac_cd*fac_cd) end
+      fs
+    end
+
+  fun e3 (n: U64): U64 =>
+    try factors(n).pop()? else 0 end

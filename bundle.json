@@ -2,10 +2,6 @@
   "deps": [
     {
       "type": "github",
-      "repo": "jemc/inspect"
-    },
-    {
-      "type": "github",
       "repo": "jemc/pony-inspect"
     }
   ]

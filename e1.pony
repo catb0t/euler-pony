@@ -1,6 +1,3 @@
-// use "inspect"
-// use "assert"
-// use "debug"
 use "collections"
 use "itertools"
 use "ponybench"
