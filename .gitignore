@@ -1,1 +1,5 @@
 .deps
+*.o
+Makefile
+*.make
+euler-pony
